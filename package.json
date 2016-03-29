@@ -1,0 +1,31 @@
+{
+  "name": "eventus-receiver",
+  "version": "1.0.0",
+  "description": "",
+  "main": "receiver/server.js",
+  "scripts": {
+    "watch": "nodemon receiver/server.js | bunyan"
+  },
+  "author": "Erik Kristensen <erik@erikkristensen.com>",
+  "license": "MIT",
+  "repository": "ekristen/eventus-receiver",
+  "dependencies": {
+    "bunyan": "^1.8.0",
+    "docker-events": "0.0.2",
+    "dockerode": "^2.2.10",
+    "level-hyper": "^1.2.1",
+    "level-key": "^1.2.1",
+    "level-live-stream": "^1.4.11",
+    "monotonic-timestamp": "0.0.9",
+    "nsq.js": "^0.14.5",
+    "object-hash": "^1.1.2",
+    "rc": "^1.1.6",
+    "restify": "^4.0.4",
+    "retry": "^0.9.0",
+    "superagent": "^1.8.1"
+  },
+  "devDependencies": {
+    "nodemon": "^1.9.1",
+    "tape": "^4.5.1"
+  }
+}
