@@ -3,7 +3,7 @@ var config = require('./config')
 var pkg = require('../package.json')
 var restify = require('restify')
 var bunyan = require('bunyan')
-var level = require('level-hyper')
+var level = require('level')
 var nsq = require('nsq.js')
 var mts = require('monotonic-timestamp')
 var key = require('level-key')
@@ -65,10 +65,11 @@ writer
   })
   .connect()
 
-function saveEvent(req, res, next) {
+function saveEvent (req, res, next) {
   logger.debug({event: req.event}, 'saveEvent')
 
-  req.event['_time'] = mts()
+  req.event['_time'] = req.event['_time'] || mts()
+  req.event['_received'] = mts()
 
   datastore.put(key('event', req.event._time), req.event, function(err) {
     if (err) {
@@ -82,25 +83,29 @@ function saveEvent(req, res, next) {
   })
 }
 
-var logger = bunyan.createLogger({
-  name: pkg.name,
-  level: config.logger.level
-})
+var logger = require('./logger')
 
 var server = restify.createServer({
   name: pkg.name,
-  version: '1.0.0'
+  version: pkg.version,
+  log: logger
 })
 
 server.use(restify.acceptParser(server.acceptable))
 server.use(restify.queryParser())
 server.use(restify.bodyParser({ mapParams: false }))
 
+server.use(restify.requestLogger({
+  properties: {
+    component: 'request'
+  }
+}))
+
 server.on('after', restify.auditLogger({
   log: logger.child({type: 'audit'})
 }))
 
-server.pre(function(req, res, next) {
+server.pre(function preAWSTransformer (req, res, next) {
   // Beat AWS into submission
   if (req.url == '/e/aws') {
     req.headers['accept'] = 'application/json'
@@ -109,15 +114,37 @@ server.pre(function(req, res, next) {
   return next()
 })
 
-server.post('/e/splunk', require('./sources/splunk'), saveEvent)
+server.post(
+  { path: '/e/splunk' },
+  require('./sources/splunk'),
+  saveEvent
+)
 
-server.post('/e/github', require('./sources/github'), saveEvent)
+server.post(
+  { path: '/e/github' },
+  require('./sources/github'),
+  saveEvent
+)
 
-server.post('/e/aws', require('./sources/aws'), saveEvent)
+server.post(
+  { path: '/e/aws' },
+  require('./sources/aws'),
+  saveEvent
+)
 
-server.post('/e/docker', require('./sources/docker'), saveEvent)
+server.post(
+  { path: '/e/docker' },
+  require('./sources/docker'),
+  saveEvent
+)
 
-server.get('/', function(req, res, next) {
+server.post(
+  { path: '/' },
+  require('./sources/eventus'),
+  saveEvent
+)
+
+server.get('/', function rootHandler (req, res, next) {
   res.send({
     name: server.name,
     version: server.versions,
